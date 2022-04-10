@@ -28,6 +28,7 @@ LTCvocabulary V_fixed {
 LTCvocabulary V_student {
     extern vocabulary V_fixed
     I_floor : Floor
+    I_DoorState : DoorState
     C_floor(Time, Floor)
     Cn_floor(Time)
     C_Unanswered(Time,Floor)
@@ -39,7 +40,9 @@ LTCvocabulary V_student {
     C_GoingDown(Time)
     Cn_GoingDown(Time)
     requestAbove(Time) 
-    requestBelow(Time) 
+    requestBelow(Time)
+    C_DoorOpen(Time)
+    Cn_DoorOpen(Time)
 
 
 }
@@ -59,13 +62,20 @@ Theory T_fixed : V_student {
 // Here you should model the dynamic elevator system
 Theory T_student:V_student {
     I_floor = 0.
-    //! t[Time]:(~(?f2[Floor]:C_floor(t,f2))) => ~Cn_floor(t).
-    ! t[Time]:(~(?f[Floor]:UnansweredRequest(t,f))) => ~Cn_floor(t).
+    ! t[Time]:(~(?f[Floor]:UnansweredRequest(t,f))) => Cn_floor(t).
+    I_DoorState = Closed.
+    {
+        ElDoorState(Start)= I_DoorState.
+        ! t[Time]: ElDoorState(Next(t))= Open <- C_DoorOpen(t).
+        ! t[Time]: ElDoorState(Next(t))= Closed <- ElDoorState(t)=Open.
+        ! t[Time]: ElDoorState(Next(t))= Closed <- ElDoorState(t)=Closed & ~C_DoorOpen(t).
+
+    }
 
     {
         ElPosition(Start)= I_floor.
         ! t[Time] f[Floor]: ElPosition(Next(t))= f <- C_floor(t, f).
-        ! t[Time] f[Floor]: ElPosition(Next(t))= f <- ElPosition(t)= f & ~Cn_floor(t).
+        ! t[Time] f[Floor]: ElPosition(Next(t))= f <- ElPosition(t)= f & Cn_floor(t).
     }
     {
         !t[Time] f[Floor]: C_Unanswered(t,f) <- MakeRequest(t,f) & ~UnansweredRequest(t,f).
@@ -75,39 +85,25 @@ Theory T_student:V_student {
         ! t[Time] f[Floor]: UnansweredRequest(Next(t),f) <- UnansweredRequest(t,f)& ~Cn_Unanswered(t, f).
     }
     {
-        ! t[Time] f[Floor]: Cn_Unanswered(t,f) <- ElPosition(t)=f.//& ElDoorState(t)=Open.
+        ! t[Time] f[Floor]: Cn_Unanswered(t,f) <- ElPosition(t)=f & ElDoorState(t)=Open.
     }
     {
-        ! t[Time] f[Floor]: C_floor(t, f+1) <- C_GoingUp(t) & ElPosition(t)=f. // take into account max floor
-        ! t[Time] f[Floor]: C_floor(t, f-1) <- C_GoingDown(t) & ElPosition(t)=f. // take into account max floor
-
-
+        ! t[Time] f[Floor]: C_floor(t, f+1) <- C_GoingUp(t) & ElPosition(t)=f &
+        ~UnansweredRequest(t,f). // take into account max floor
+        ! t[Time] f[Floor]: C_floor(t, f-1) <- C_GoingDown(t) & ElPosition(t)=f &
+        ~UnansweredRequest(t,f). // take into account max floor
+    }
+    {
+        ! t[Time] f[Floor]: C_DoorOpen(t) <- ElPosition(t)=f &
+        UnansweredRequest(t,f) & ElDoorState(t) = Closed.        
     }
     ~GoingUp(Start).
-
-    //{
-   //     ! t[Time]: GoingUp(Next(t)) <- C_GoingUp(t).
-   //     ! t[Time]: GoingUp(Next(t)) <- GoingUp(t) & ~Cn_GoingUp(t).
-    //}
-    
-    
-    
-//    {
-    	//! t[Time] f1[Floor]: C_GoingUp(t) <- ElPosition(t)=f1&
-		//?f2[Floor]:UnansweredRequest(t,f2)&f2>=f1.
-//    }
     
     {
-        //! t[Time] f1[Floor]: GoingUp(Next(t)) <- GoingUp(t)&ElPosition(t)=f1&
-		//?f2[Floor]:UnansweredRequest(t,f2)&f2>=f1.
          ! t[Time] f1[Floor]: requestAbove(t) <- ElPosition(t)=f1&
 			?f2[Floor]:UnansweredRequest(t,f2)&f2>f1. //| MakeRequest(t,f2)&f2>f1.
         ! t[Time] f1[Floor]: requestBelow(t) <- ElPosition(t)=f1&
 			?f2[Floor]:UnansweredRequest(t,f2)&f2<f1. //| MakeRequest(t,f2)&f2<f1.
-        
-        //&~GoingDown(t-1). 
-      //  ! t[Time] f1[Floor]: GoingDown(t) <- ElPosition(t)=f1&
-		//	?f2[Floor]:UnansweredRequest(t,f2)&f2<f1 &~GoingUp(t-1). 
     }
     {
       ! t[Time]:  C_GoingUp(t) <- requestAbove(t) & ~requestBelow(t).
@@ -122,9 +118,7 @@ Theory T_student:V_student {
         UnansweredRequest(t,f2)&f2<f1 : abs(f2-f1)}.
       ! t[Time], f1[Floor]:  C_GoingUp(t) <- requestAbove(t) & requestBelow(t) & ElPosition(t)=f1 & 
         min{f2[Floor]: UnansweredRequest(t,f2)&f2>f1: abs(f2-f1)}=min{f2[Floor]:
-        UnansweredRequest(t,f2)&f2<f1 : abs(f2-f1)}.  
-        
-        
+        UnansweredRequest(t,f2)&f2<f1 : abs(f2-f1)}.        
     }
     //         ~GoingUp(t) & ~GoingDown(t).
 
@@ -135,26 +129,8 @@ Theory T_student:V_student {
       ! t[Time]:  GoingDown(Next(t)) <- C_GoingDown(t).
     }
     
-    //! t[Time] f1[Floor]: ElPosition(t)=f1&
-	//	?f2[Floor]:UnansweredRequest(t,f2)&f2>=f1 => requestAbove(t). 
-    
-    //{
-    //! t[Time]:  GoingUp(Next(t)) <- ~GoingDown(t) & requestAbove(t).
-    //! t[Time]:  GoingDown(Next(t)) <- ~GoingUp(t) & requestBelow(t).
-        
-       
-    //! t[Time]:  GoingUp(Next(t)) <- GoingUp(t) & requestAbove(t).
-    //! t[Time]:  GoingDown(Next(t)) <- GoingDown(t) & requestBelow(t).
-      
-    //}
-
-    
     ~(?f[Floor]: UnansweredRequest(Start,f)). // we start without  active unanswered requests
-	//C_floor(0,1).
-    //~Cn_Unanswered(1, 4).
-    !t[Time]: ElDoorState(t)=Closed.
-    //!t[Time]: GoingDown(t)=>~GoingUp(t).
-    //!t[Time]: GoingUp(t)=>~GoingDown(t).
+    //!t[Time]: ElDoorState(t)=Closed.
 
 }
 
