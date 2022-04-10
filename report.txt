@@ -1,0 +1,21 @@
+Introduced predicate and functions symbols:
+-I_floor is the initial floor (at Start time), 0.
+-I_DoorState is the initial door stated, closed.
+-C_floor(t,f) is true if and only if there is a cause for ElPosition to be f at time t+1.
+-C_DoorOpen(t) is true if and only if there is a cause for ElDoorState to become Open at time t+1.
+-C_Unanswered(t,f) is true if and only if there is a cause for UnansweredRequest to become true for floor f and time t+1.
+-Cn_Unanswered(t,f) is true if and only if there is a cause for UnansweredRequest to become false for floor f and time t+1.
+-GoingUp(t) is true if and only if the elevator is in the state where it is handling requests above it's current position.
+-GoingDown(t) is true if and only if the elevator is in the state where it is handling requests above it's current position.
+-requestAbove(t) is a helper predicate that is true if and only if there exists an unanswered request above the elevetor's position at time t.
+-requestBelow(t) is a helper predicate that is true if and only if there exists an unanswered request above the elevetor's position at time t.
+-FreshRequestsHelper(t) is a helper predicate that is true if and only if there are new unhandled requests and the elvator was not going up or down. So we need to decide what request to handle first.
+
+Design decisions:
+I don't use negative cause for floor. Instead I check if there are is no C_floor to any floor at a given timestamp.
+Similarly, I don't use a negative causse for ElDoorState (for closing). Instead the door always closes after being open at the previous timestamp.
+GoingUp and GoingDown don't have causes. I think it is not really needed here as I check anyways every timestamp the remaining unanswered requests. This could be made more efficient maybe, but that was not part of the project task.
+Reusing helper predicates makes the code more readable and cleaner.
+
+
+Estimation of time: 30 hours

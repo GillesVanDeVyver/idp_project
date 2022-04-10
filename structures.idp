@@ -73,5 +73,11 @@ Structure S10 : V_student {
     MakeRequest = {0,5;2,3;3,2;15,3}
 }
 
+Structure S11 : V_student {
+    Time = { 0 .. 10 }
+    Floor = { 0 .. 1 }
+    MakeRequest = {0, 1; 1,0;3,1;4,1}
+}
+
 
 

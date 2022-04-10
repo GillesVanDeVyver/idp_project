@@ -30,17 +30,14 @@ LTCvocabulary V_student {
     I_floor : Floor
     I_DoorState : DoorState
     C_floor(Time, Floor)
-    //Cn_floor(Time)
+    C_DoorOpen(Time)
     C_Unanswered(Time,Floor)
     Cn_Unanswered(Time,Floor)
 	GoingUp(Time)
  	GoingDown(Time)
     requestAbove(Time) 
     requestBelow(Time)
-    C_DoorOpen(Time)
     FreshRequestsHelper(Time)
-
-
 }
 
 // TIME THEORY
@@ -57,47 +54,46 @@ Theory T_fixed : V_student {
 // STUDENT THEORY
 // Here you should model the dynamic elevator system
 Theory T_student:V_student {
-    I_floor = 0.
+	I_floor = 0.
     I_DoorState = Closed.
     {
-        ElDoorState(Start)= I_DoorState.
+    	ElDoorState(Start)= I_DoorState.
         ! t[Time]: ElDoorState(Next(t))= Open <- C_DoorOpen(t).
         ! t[Time]: ElDoorState(Next(t))= Closed <- ElDoorState(t)=Open.
         ! t[Time]: ElDoorState(Next(t))= Closed <- ElDoorState(t)=Closed & ~C_DoorOpen(t).
-
     }
-
     {
         ElPosition(Start)= I_floor.
         ! t[Time] f[Floor]: ElPosition(Next(t))= f <- C_floor(t, f).
-        ! t[Time] f[Floor]: ElPosition(Next(t))= f <- ElPosition(t)= f &
-        	~(?f2[Floor]: C_floor(t,f2) & f ~= f2).
+        ! t[Time] f[Floor]: ElPosition(Next(t))= f <- ElPosition(t)= f & ~(?f2[Floor]: C_floor(t,f2)
+        	& f ~= f2).
     }
     {
         !t[Time] f[Floor]: C_Unanswered(t,f) <- MakeRequest(t,f) & ~UnansweredRequest(t,f).
     }
     {
     	! t[Time] f[Floor]: UnansweredRequest(Next(t),f) <- C_Unanswered(t, f).
-        ! t[Time] f[Floor]: UnansweredRequest(Next(t),f) <- UnansweredRequest(t,f)& ~Cn_Unanswered(t, f).
+        ! t[Time] f[Floor]: UnansweredRequest(Next(t),f) <- UnansweredRequest(t,f)& 
+        	~Cn_Unanswered(t,f).
     }
     {
         ! t[Time] f[Floor]: Cn_Unanswered(t,f) <- ElPosition(t)=f & ElDoorState(t)=Open.
     }
     {
         ! t[Time] f[Floor]: C_floor(t, f+1) <- GoingUp(t) & ElPosition(t)=f &
-        ~UnansweredRequest(t,f). // take into account max floor?
+        	~UnansweredRequest(t,f).
         ! t[Time] f[Floor]: C_floor(t, f-1) <- GoingDown(t) & ElPosition(t)=f &
-        ~UnansweredRequest(t,f). // take into account max floor?
+        	~UnansweredRequest(t,f).
     }
     {
         ! t[Time] f[Floor]: C_DoorOpen(t) <- ElPosition(t)=f &
-        UnansweredRequest(t,f) & ElDoorState(t) = Closed.        
+        	UnansweredRequest(t,f) & ElDoorState(t) = Closed.        
     }    
     {
-         ! t[Time] f1[Floor]: requestAbove(t) <- ElPosition(t)=f1&
-			?f2[Floor]:UnansweredRequest(t,f2)&f2>f1. //| MakeRequest(t,f2)&f2>f1.
+        ! t[Time] f1[Floor]: requestAbove(t) <- ElPosition(t)=f1&
+			?f2[Floor]:UnansweredRequest(t,f2)&f2>f1.
         ! t[Time] f1[Floor]: requestBelow(t) <- ElPosition(t)=f1&
-			?f2[Floor]:UnansweredRequest(t,f2)&f2<f1. //| MakeRequest(t,f2)&f2<f1.
+			?f2[Floor]:UnansweredRequest(t,f2)&f2<f1.
     }
     ! t[Time]: FreshRequestsHelper(t) <=> requestAbove(t) & requestBelow(t) & ~GoingUp(t-1) &
     	~GoingDown(t-1). // this helper predicates indicates that there are new unhandled requests 		and the elvator was not going up or down. So we need to decide what request to handle first
@@ -132,7 +128,7 @@ procedure main() {
     // Change the structure name to try other structures (check the included file "structures.idp" for available provided structures, and feel free to add additional structures)                           
     //explainunsat(CompleteTheory,S5)
     //printmodels(allmodels(CompleteTheory,S10))
-    model = onemodel(CompleteTheory, S10)
+    model = onemodel(CompleteTheory, S11)
     
     // Printing model 
     print(model)
