@@ -30,7 +30,7 @@ LTCvocabulary V_student {
     I_floor : Floor
     I_DoorState : DoorState
     C_floor(Time, Floor)
-    Cn_floor(Time)
+    //Cn_floor(Time)
     C_Unanswered(Time,Floor)
     Cn_Unanswered(Time,Floor)
 	GoingUp(Time)
@@ -38,7 +38,6 @@ LTCvocabulary V_student {
     requestAbove(Time) 
     requestBelow(Time)
     C_DoorOpen(Time)
-    Cn_DoorOpen(Time)
     FreshRequestsHelper(Time)
 
 
@@ -59,7 +58,6 @@ Theory T_fixed : V_student {
 // Here you should model the dynamic elevator system
 Theory T_student:V_student {
     I_floor = 0.
-    ! t[Time]:(~(?f[Floor]:UnansweredRequest(t,f))) => Cn_floor(t).
     I_DoorState = Closed.
     {
         ElDoorState(Start)= I_DoorState.
@@ -72,7 +70,8 @@ Theory T_student:V_student {
     {
         ElPosition(Start)= I_floor.
         ! t[Time] f[Floor]: ElPosition(Next(t))= f <- C_floor(t, f).
-        ! t[Time] f[Floor]: ElPosition(Next(t))= f <- ElPosition(t)= f & Cn_floor(t).
+        ! t[Time] f[Floor]: ElPosition(Next(t))= f <- ElPosition(t)= f &
+        	~(?f2[Floor]: C_floor(t,f2) & f ~= f2).
     }
     {
         !t[Time] f[Floor]: C_Unanswered(t,f) <- MakeRequest(t,f) & ~UnansweredRequest(t,f).
@@ -93,9 +92,7 @@ Theory T_student:V_student {
     {
         ! t[Time] f[Floor]: C_DoorOpen(t) <- ElPosition(t)=f &
         UnansweredRequest(t,f) & ElDoorState(t) = Closed.        
-    }
-    //~GoingUp(Start).
-    
+    }    
     {
          ! t[Time] f1[Floor]: requestAbove(t) <- ElPosition(t)=f1&
 			?f2[Floor]:UnansweredRequest(t,f2)&f2>f1. //| MakeRequest(t,f2)&f2>f1.
@@ -134,6 +131,7 @@ procedure main() {
     
     // Change the structure name to try other structures (check the included file "structures.idp" for available provided structures, and feel free to add additional structures)                           
     //explainunsat(CompleteTheory,S5)
+    //printmodels(allmodels(CompleteTheory,S10))
     model = onemodel(CompleteTheory, S10)
     
     // Printing model 
