@@ -58,7 +58,7 @@ Structure S7:V_student {
 Structure S8:V_student {
     Time = {0..20}
     Floor = {0..7}
-    MakeRequest = {0, 4; 7, 2}
+    MakeRequest = {0, 4; 7, 1; 7, 6}
 }
 
 

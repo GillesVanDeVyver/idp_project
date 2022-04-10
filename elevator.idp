@@ -114,8 +114,20 @@ Theory T_student:V_student {
       ! t[Time]:  C_GoingDown(t) <- requestBelow(t) & ~requestAbove(t).
       ! t[Time]:  C_GoingUp(t) <- requestAbove(t) & requestBelow(t) & GoingUp(t).
 	  ! t[Time]:  C_GoingDown(t) <- requestAbove(t) & requestBelow(t) & GoingDown(t).
-      ! t[Time]:  C_GoingUp(t) <- requestAbove(t) & requestBelow(t) & ~GoingUp(t) & ~GoingDown(t).
+      ! t[Time], f1[Floor]:  C_GoingUp(t) <- requestAbove(t) & requestBelow(t) & ElPosition(t)=f1 & 
+        min{f2[Floor]: UnansweredRequest(t,f2)&f2>f1: abs(f2-f1)}<min{f2[Floor]:
+        UnansweredRequest(t,f2)&f2<f1 : abs(f2-f1)}.
+      ! t[Time], f1[Floor]:  C_GoingDown(t) <- requestAbove(t) & requestBelow(t) & ElPosition(t)=f1 
+        & min{f2[Floor]: UnansweredRequest(t,f2)&f2>f1: abs(f2-f1)}>min{f2[Floor]:
+        UnansweredRequest(t,f2)&f2<f1 : abs(f2-f1)}.
+      ! t[Time], f1[Floor]:  C_GoingUp(t) <- requestAbove(t) & requestBelow(t) & ElPosition(t)=f1 & 
+        min{f2[Floor]: UnansweredRequest(t,f2)&f2>f1: abs(f2-f1)}=min{f2[Floor]:
+        UnansweredRequest(t,f2)&f2<f1 : abs(f2-f1)}.  
+        
+        
     }
+    //         ~GoingUp(t) & ~GoingDown(t).
+
     {
       ! t[Time]:  GoingUp(Next(t)) <- C_GoingUp(t).
     }
@@ -154,7 +166,7 @@ procedure main() {
     local CompleteTheory = merge(T_fixed, T_student) 
     
     // Change the structure name to try other structures (check the included file "structures.idp" for available provided structures, and feel free to add additional structures)                                
-    model = onemodel(CompleteTheory, S2)
+    model = onemodel(CompleteTheory, S7)
     
     // Printing model 
     print(model)
