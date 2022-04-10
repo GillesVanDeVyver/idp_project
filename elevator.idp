@@ -1,0 +1,172 @@
+// First name: <your first name>
+// Last name: <your last name>
+// Student number: <your student number>
+
+
+// FIXED VOCABULARY
+// DO NOT CHANGE THIS VOCABULARY
+LTCvocabulary V_fixed {
+    type Time isa nat			// A set of time points
+    Start: Time 				// The initial time point
+    partial Next(Time): Time 	// The successor time point of time point t
+    
+    type Floor isa nat									// The set of floors
+    type DoorState constructed from {Closed, Open}		// A set of possible states of the elevator’s doors
+	
+    // Fluents
+    ElPosition(Time):Floor				// The floor of the elevator at time point t
+    ElDoorState(Time):DoorState			// The state of the elevator’s doors at time point t
+    UnansweredRequest(Time, Floor)		// Denotes that there is an unanswered request at floor f at time point t
+    
+    // Actions
+    MakeRequest(Time, Floor) 			// Denotes that a request is made for floor f at time point t
+}
+
+
+// STUDENT VOCABULARY
+// Here you can add new types, functions and predicates
+LTCvocabulary V_student {
+    extern vocabulary V_fixed
+    I_floor : Floor
+    C_floor(Time, Floor)
+    Cn_floor(Time)
+    C_Unanswered(Time,Floor)
+    Cn_Unanswered(Time,Floor)
+	GoingUp(Time)
+    C_GoingUp(Time)
+    Cn_GoingUp(Time)
+ 	GoingDown(Time)
+    C_GoingDown(Time)
+    Cn_GoingDown(Time)
+    requestAbove(Time) 
+    requestBelow(Time) 
+
+
+}
+
+// TIME THEORY
+// DO NOT CHANGE THIS THEORY
+Theory T_fixed : V_student {
+    // Defining time
+    {
+        Start = MIN[:Time].
+        ! t: Next(t) = t+1 <- Time(t+1).
+    }
+}
+
+
+// STUDENT THEORY
+// Here you should model the dynamic elevator system
+Theory T_student:V_student {
+    I_floor = 0.
+    //! t[Time]:(~(?f2[Floor]:C_floor(t,f2))) => ~Cn_floor(t).
+    ! t[Time]:(~(?f[Floor]:UnansweredRequest(t,f))) => ~Cn_floor(t).
+
+    {
+        ElPosition(Start)= I_floor.
+        ! t[Time] f[Floor]: ElPosition(Next(t))= f <- C_floor(t, f).
+        ! t[Time] f[Floor]: ElPosition(Next(t))= f <- ElPosition(t)= f & ~Cn_floor(t).
+    }
+    {
+        !t[Time] f[Floor]: C_Unanswered(t,f) <- MakeRequest(t,f) & ~UnansweredRequest(t,f).
+    }
+    {
+    	! t[Time] f[Floor]: UnansweredRequest(Next(t),f) <- C_Unanswered(t, f).
+        ! t[Time] f[Floor]: UnansweredRequest(Next(t),f) <- UnansweredRequest(t,f)& ~Cn_Unanswered(t, f).
+    }
+    {
+        ! t[Time] f[Floor]: Cn_Unanswered(t,f) <- ElPosition(t)=f.//& ElDoorState(t)=Open.
+    }
+    {
+        ! t[Time] f[Floor]: C_floor(t, f+1) <- C_GoingUp(t) & ElPosition(t)=f. // take into account max floor
+        ! t[Time] f[Floor]: C_floor(t, f-1) <- C_GoingDown(t) & ElPosition(t)=f. // take into account max floor
+
+
+    }
+    ~GoingUp(Start).
+
+    //{
+   //     ! t[Time]: GoingUp(Next(t)) <- C_GoingUp(t).
+   //     ! t[Time]: GoingUp(Next(t)) <- GoingUp(t) & ~Cn_GoingUp(t).
+    //}
+    
+    
+    
+//    {
+    	//! t[Time] f1[Floor]: C_GoingUp(t) <- ElPosition(t)=f1&
+		//?f2[Floor]:UnansweredRequest(t,f2)&f2>=f1.
+//    }
+    
+    {
+        //! t[Time] f1[Floor]: GoingUp(Next(t)) <- GoingUp(t)&ElPosition(t)=f1&
+		//?f2[Floor]:UnansweredRequest(t,f2)&f2>=f1.
+         ! t[Time] f1[Floor]: requestAbove(t) <- ElPosition(t)=f1&
+			?f2[Floor]:UnansweredRequest(t,f2)&f2>f1. //| MakeRequest(t,f2)&f2>f1.
+        ! t[Time] f1[Floor]: requestBelow(t) <- ElPosition(t)=f1&
+			?f2[Floor]:UnansweredRequest(t,f2)&f2<f1. //| MakeRequest(t,f2)&f2<f1.
+        
+        //&~GoingDown(t-1). 
+      //  ! t[Time] f1[Floor]: GoingDown(t) <- ElPosition(t)=f1&
+		//	?f2[Floor]:UnansweredRequest(t,f2)&f2<f1 &~GoingUp(t-1). 
+    }
+    {
+      ! t[Time]:  C_GoingUp(t) <- requestAbove(t) & ~requestBelow(t).
+      ! t[Time]:  C_GoingDown(t) <- requestBelow(t) & ~requestAbove(t).
+      ! t[Time]:  C_GoingUp(t) <- requestAbove(t) & requestBelow(t) & GoingUp(t).
+	  ! t[Time]:  C_GoingDown(t) <- requestAbove(t) & requestBelow(t) & GoingDown(t).
+      ! t[Time]:  C_GoingUp(t) <- requestAbove(t) & requestBelow(t) & ~GoingUp(t) & ~GoingDown(t).
+    }
+    {
+      ! t[Time]:  GoingUp(Next(t)) <- C_GoingUp(t).
+    }
+    {
+      ! t[Time]:  GoingDown(Next(t)) <- C_GoingDown(t).
+    }
+    
+    //! t[Time] f1[Floor]: ElPosition(t)=f1&
+	//	?f2[Floor]:UnansweredRequest(t,f2)&f2>=f1 => requestAbove(t). 
+    
+    //{
+    //! t[Time]:  GoingUp(Next(t)) <- ~GoingDown(t) & requestAbove(t).
+    //! t[Time]:  GoingDown(Next(t)) <- ~GoingUp(t) & requestBelow(t).
+        
+       
+    //! t[Time]:  GoingUp(Next(t)) <- GoingUp(t) & requestAbove(t).
+    //! t[Time]:  GoingDown(Next(t)) <- GoingDown(t) & requestBelow(t).
+      
+    //}
+
+    
+    ~(?f[Floor]: UnansweredRequest(Start,f)). // we start without  active unanswered requests
+	//C_floor(0,1).
+    //~Cn_Unanswered(1, 4).
+    !t[Time]: ElDoorState(t)=Closed.
+    //!t[Time]: GoingDown(t)=>~GoingUp(t).
+    //!t[Time]: GoingUp(t)=>~GoingDown(t).
+
+}
+
+
+
+// MAIN PROCEDURE
+// If you have to change the main procedure for debugging purposes, be careful and restore it back once you finish debugging.
+procedure main() {
+    local CompleteTheory = merge(T_fixed, T_student) 
+    
+    // Change the structure name to try other structures (check the included file "structures.idp" for available provided structures, and feel free to add additional structures)                                
+    model = onemodel(CompleteTheory, S2)
+    
+    // Printing model 
+    print(model)
+
+    // Visualization
+    initVisualization()
+    visualizeElevator(model)
+}
+
+// File responsible for visualization  
+include "visualize_elevator.idp"
+
+// Structures for testing
+// You can open this file and check the given structures 
+include "structures.idp"
