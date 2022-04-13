@@ -29,15 +29,23 @@ LTCvocabulary V_student {
     extern vocabulary V_fixed
     I_floor : Floor
     I_DoorState : DoorState
-    C_floor(Time, Floor)
+    C_Floor(Time, Floor)
+    Cn_Floor(Time)
     C_DoorOpen(Time)
+    Cn_DoorOpen(Time)
     C_Unanswered(Time,Floor)
     Cn_Unanswered(Time,Floor)
 	GoingUp(Time)
+    C_GoingUp(Time)
+    Cn_GoingUp(Time)
+    C_GoingDown(Time)
+    Cn_GoingDown(Time)
  	GoingDown(Time)
     requestAbove(Time) 
     requestBelow(Time)
-    FreshRequestsHelper(Time)
+    DistanceUnasweredAbove(Time,Floor)
+    DistanceUnasweredBelow(Time,Floor)
+    
 }
 
 // TIME THEORY
@@ -56,66 +64,85 @@ Theory T_fixed : V_student {
 Theory T_student:V_student {
 	I_floor = 0.
     I_DoorState = Closed.
+    // ElDoorState
     {
     	ElDoorState(Start)= I_DoorState.
         ! t[Time]: ElDoorState(Next(t))= Open <- C_DoorOpen(t).
-        ! t[Time]: ElDoorState(Next(t))= Closed <- ElDoorState(t)=Open.
+        ! t[Time]: ElDoorState(Next(t))= Closed <- Cn_DoorOpen(t).
         ! t[Time]: ElDoorState(Next(t))= Closed <- ElDoorState(t)=Closed & ~C_DoorOpen(t).
     }
+    // C_DoorOpen
+    {
+        ! t[Time] f[Floor]: C_DoorOpen(t) <- ElPosition(t)=f &
+        	UnansweredRequest(t,f) & ElDoorState(t) = Closed. 
+        ! t[Time] f[Floor]: Cn_DoorOpen(t) <- ElDoorState(t)=Open.
+    } 
+    // ElPosition
     {
         ElPosition(Start)= I_floor.
-        ! t[Time] f[Floor]: ElPosition(Next(t))= f <- C_floor(t, f).
-        ! t[Time] f[Floor]: ElPosition(Next(t))= f <- ElPosition(t)= f & ~(?f2[Floor]: C_floor(t,f2)
+        ! t[Time] f[Floor]: ElPosition(Next(t))= f <- C_Floor(t, f).
+        ! t[Time] f[Floor]: ElPosition(Next(t))= f <- ElPosition(t)= f & Cn_Floor(t).
+    }
+    // C_Floor
+    {
+        ! t[Time] f[Floor]: C_Floor(t, f+1) <- GoingUp(t) & ElPosition(t)=f &
+        	~UnansweredRequest(t,f).
+        ! t[Time] f[Floor]: C_Floor(t, f-1) <- GoingDown(t) & ElPosition(t)=f &
+        	~UnansweredRequest(t,f).
+        ! t[Time] f[Floor]: Cn_Floor(t) <- ElPosition(t)= f & ~(?f2[Floor]: C_Floor(t,f2)
         	& f ~= f2).
     }
-    {
-        !t[Time] f[Floor]: C_Unanswered(t,f) <- MakeRequest(t,f) & ~UnansweredRequest(t,f).
-    }
+    // UnansweredRequest
     {
     	! t[Time] f[Floor]: UnansweredRequest(Next(t),f) <- C_Unanswered(t, f).
         ! t[Time] f[Floor]: UnansweredRequest(Next(t),f) <- UnansweredRequest(t,f)& 
         	~Cn_Unanswered(t,f).
     }
+    // C_Unanswered
     {
+        !t[Time] f[Floor]: C_Unanswered(t,f) <- MakeRequest(t,f) & ~UnansweredRequest(t,f).
         ! t[Time] f[Floor]: Cn_Unanswered(t,f) <- ElPosition(t)=f & ElDoorState(t)=Open.
+
     }
+    // GoingUp & GoingDown
     {
-        ! t[Time] f[Floor]: C_floor(t, f+1) <- GoingUp(t) & ElPosition(t)=f &
-        	~UnansweredRequest(t,f).
-        ! t[Time] f[Floor]: C_floor(t, f-1) <- GoingDown(t) & ElPosition(t)=f &
-        	~UnansweredRequest(t,f).
+    	! t[Time]: GoingUp(Next(t)) <- C_GoingUp(t).
+        ! t[Time]: GoingUp(Next(t)) <- GoingUp(t)& 
+        	~Cn_GoingUp(t).
+        ! t[Time]: GoingDown(Next(t)) <- C_GoingDown(t).
+        ! t[Time]: GoingDown(Next(t)) <- GoingDown(t)& 
+        	~Cn_GoingDown(t).
     }
+    // C_GoingUp & C_GoingDown
     {
-        ! t[Time] f[Floor]: C_DoorOpen(t) <- ElPosition(t)=f &
-        	UnansweredRequest(t,f) & ElDoorState(t) = Closed.        
-    }    
+        !t[Time]: C_GoingUp(t) <- requestAbove(t) & ~requestBelow(t) & ~GoingUp(t).
+        !t[Time]: Cn_GoingUp(t) <- ~requestAbove(t) & GoingUp(t).
+        !t[Time]: C_GoingDown(t) <- ~requestAbove(t) & requestBelow(t) & ~GoingDown(t).
+        !t[Time]: Cn_GoingDown(t) <- ~requestBelow(t) & GoingDown(t).
+        // otherwhise go to closest
+      	! t[Time], d1[Floor] d2[Floor]:  C_GoingDown(t) <-
+        	DistanceUnasweredAbove(t,d1) & DistanceUnasweredBelow(t,d2) & d1>d2.
+        ! t[Time], d1[Floor] d2[Floor]:  C_GoingUp(t) <-
+        	DistanceUnasweredAbove(t,d1) & DistanceUnasweredBelow(t,d2) & d1<d2.
+        ! t[Time], d1[Floor] d2[Floor]:  C_GoingUp(t) <-
+        	DistanceUnasweredAbove(t,d1) & DistanceUnasweredBelow(t,d2) & d1=d2.  
+    }
+    // requestAbove & requestBelow
     {
         ! t[Time] f1[Floor]: requestAbove(t) <- ElPosition(t)=f1&
-			?f2[Floor]:UnansweredRequest(t,f2)&f2>f1.
+			?f2[Floor]:(UnansweredRequest(t,f2)&f2>f1 | C_Unanswered(t,f2)&f2>f1).
         ! t[Time] f1[Floor]: requestBelow(t) <- ElPosition(t)=f1&
-			?f2[Floor]:UnansweredRequest(t,f2)&f2<f1.
+			?f2[Floor]:(UnansweredRequest(t,f2)&f2<f1 | C_Unanswered(t,f2)&f2<f1).
     }
-    ! t[Time]: FreshRequestsHelper(t) <=> requestAbove(t) & requestBelow(t) & ~GoingUp(t-1) &
-    	~GoingDown(t-1). // this helper predicates indicates that there are new unhandled requests 		and the elvator was not going up or down. So we need to decide what request to handle first
+    // DistanceUnasweredAbove & DistanceUnasweredBelow
     {
-      // 'obvious' cases
-      ! t[Time]:  GoingUp(t) <- requestAbove(t) & ~requestBelow(t).
-      ! t[Time]:  GoingDown(t) <- requestBelow(t) & ~requestAbove(t).
-      // keep going the direction the elevator was going
-      ! t[Time]:  GoingUp(t) <- requestAbove(t) & requestBelow(t) & GoingUp(t-1).
-	  ! t[Time]:  GoingDown(t) <- requestAbove(t) & requestBelow(t) & GoingDown(t-1).
-      // handling of 'fresh requests'
-      ! t[Time], f1[Floor]:  GoingUp(t) <- FreshRequestsHelper(t) & ElPosition(t)=f1 & 
-        min{f2[Floor]: UnansweredRequest(t,f2)&f2>f1: abs(f2-f1)}<min{f2[Floor]:
-        UnansweredRequest(t,f2)&f2<f1 : abs(f2-f1)}.
-      ! t[Time], f1[Floor]:  GoingDown(t) <- FreshRequestsHelper(t) & ElPosition(t)=f1 
-        & min{f2[Floor]: UnansweredRequest(t,f2)&f2>f1: abs(f2-f1)}>min{f2[Floor]:
-        UnansweredRequest(t,f2)&f2<f1 : abs(f2-f1)}.
-      ! t[Time], f1[Floor]:  GoingUp(t) <- FreshRequestsHelper(t) & ElPosition(t)=f1 & 
-        min{f2[Floor]: UnansweredRequest(t,f2)&f2>f1: abs(f2-f1)}=min{f2[Floor]:
-        UnansweredRequest(t,f2)&f2<f1 : abs(f2-f1)}.        
+      	! t[Time] d[Floor] f1[Floor]: DistanceUnasweredAbove(t,d) <- ElPosition(t)=f1 
+        	& min{f2[Floor]: UnansweredRequest(t,f2)&f2>f1 | C_Unanswered(t,f2)&f2>f1: abs(f2-f1)} = 
+        	d.
+        ! t[Time] d[Floor] f1[Floor]: DistanceUnasweredBelow(t,d) <- ElPosition(t)=f1 
+        	& min{f2[Floor]: UnansweredRequest(t,f2)&f2<f1 | C_Unanswered(t,f2)&f2<f1: abs(f2-f1)} = 
+        	d.
     }
-    ~(?f[Floor]: UnansweredRequest(Start,f)). // we start without  active unanswered requests
 }
 
 
@@ -127,8 +154,8 @@ procedure main() {
     
     // Change the structure name to try other structures (check the included file "structures.idp" for available provided structures, and feel free to add additional structures)                           
     //explainunsat(CompleteTheory,S5)
-    //printmodels(allmodels(CompleteTheory,S10))
-    model = onemodel(CompleteTheory, S11)
+    printmodels(allmodels(CompleteTheory,S8))
+    model = onemodel(CompleteTheory, S7)
     
     // Printing model 
     print(model)
